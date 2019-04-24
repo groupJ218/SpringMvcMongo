@@ -16,26 +16,20 @@ public class TestMain {
 
         UserService userService = new UserService();
 
-        User newUser = new User();
-        newUser.setName("MainUserName");
-        boolean isAdded =  userService.add(newUser);
-        System.out.println(isAdded);
+//        User newUser = new User();
+//        newUser.setName("MainUserName");
+//        boolean isAdded = userService.add(newUser);
+//        System.out.println(isAdded);
+//        User dbUser = userService.findUserId("2");
+//        dbUser.setName("MainUser2");
+//        boolean isUpdated = userService.edit(dbUser);
+//        System.out.println(isUpdated);
 
-        List user_list = new ArrayList();
-        MongoCollection<Document> coll = MongoFactory.getCollection("mycollection");
+        userService.delete("97");
 
-        // Fetching cursor object for iterating on the database records.
-        MongoCursor<Document> cursor = coll.find().iterator();
-        while (cursor.hasNext()) {
-            Document dbObject = cursor.next();
 
-            User user = new User();
-            user.setId(dbObject.get("id").toString());
-            user.setName(dbObject.get("name").toString());
+        List user_list = userService.getAll();
 
-            // Adding the user details to the list.
-            user_list.add(user);
-        }
         System.out.println("Total records fetched from the mongo database are= " + user_list.size());
 
         for (Object o : user_list) {

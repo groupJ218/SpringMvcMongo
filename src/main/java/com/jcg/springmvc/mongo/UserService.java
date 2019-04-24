@@ -3,10 +3,12 @@ package com.jcg.springmvc.mongo;
 import com.jcg.springmvc.mongo.factory.MongoFactory;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import org.apache.log4j.Logger;
+import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,25 +16,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import static com.mongodb.client.model.Filters.eq;
+
 @Service("UserService")
 @Transactional
 public class UserService {
-    static String db_name = "mydb", db_collection = "mycollection";
+    static String db_collection = "mycollection";
     private static Logger log = Logger.getLogger(UserService.class);
 
     // Fetch all users from the mongo database.
     public List getAll() {
         List user_list = new ArrayList();
-        DBCollection coll = MongoFactory.getCollection(db_collection);
+        MongoCollection<Document> coll = MongoFactory.getCollection(db_collection);
 
         // Fetching cursor object for iterating on the database records.
-        DBCursor cursor = coll.find();
-        while(cursor.hasNext()) {
-            DBObject dbObject = cursor.next();
+        MongoCursor<Document> cursor = coll.find().iterator();
+        while (cursor.hasNext()) {
+            Document document = cursor.next();
 
             User user = new User();
-            user.setId(dbObject.get("id").toString());
-            user.setName(dbObject.get("name").toString());
+            user.setId(document.get("id").toString());
+            user.setName(document.get("name").toString());
 
             // Adding the user details to the list.
             user_list.add(user);
@@ -47,15 +51,15 @@ public class UserService {
         Random ran = new Random();
         log.debug("Adding a new user to the mongo database; Entered user_name is= " + user.getName());
         try {
-            MongoCollection coll = MongoFactory.getCollection( db_collection);
+            MongoCollection coll = MongoFactory.getCollection(db_collection);
 
             // Create a new object and add the new user details to this object.
-            BasicDBObject doc = new BasicDBObject();
+            Document doc = new Document();
             doc.put("id", String.valueOf(ran.nextInt(100)));
             doc.put("name", user.getName());
 
             // Save a new user to the mongo collection.
-            coll.insert(doc);
+            coll.insertOne(doc);
             output = true;
         } catch (Exception e) {
             output = false;
@@ -66,21 +70,28 @@ public class UserService {
 
     // Update the selected user in the mongo database.
     public Boolean edit(User user) {
+        System.out.println("User from update method "+ user.toString());
         boolean output = false;
         log.debug("Updating the existing user in the mongo database; Entered user_id is= " + user.getId());
+        Bson filter;
+        Bson query;
         try {
             // Fetching the user details.
-            BasicDBObject existing = (BasicDBObject) getDBObject(user.getId());
+            Document existing = getDocument(user.getId());
+            System.out.println("Update Method" + existing.toString());
 
-            DBCollection coll = MongoFactory.getCollection(db_name, db_collection);
+            MongoCollection<Document> coll = MongoFactory.getCollection(db_collection);
 
             // Create a new object and assign the updated details.
-            BasicDBObject edited = new BasicDBObject();
+
+
+            Document edited = new Document();
             edited.put("id", user.getId());
             edited.put("name", user.getName());
 
             // Update the existing user to the mongo database.
-            coll.update(existing, edited);
+            coll.replaceOne(eq("id", user.getId()), edited);
+
             output = true;
         } catch (Exception e) {
             output = false;
@@ -95,12 +106,11 @@ public class UserService {
         log.debug("Deleting an existing user from the mongo database; Entered user_id is= " + id);
         try {
             // Fetching the required user from the mongo database.
-            BasicDBObject item = (BasicDBObject) getDBObject(id);
-
-            DBCollection coll = MongoFactory.getCollection(db_name, db_collection);
+            Document item = (Document) getDocument(id);
+            MongoCollection coll = MongoFactory.getCollection(db_collection);
 
             // Deleting the selected user from the mongo database.
-            coll.remove(item);
+            coll.deleteOne(eq("id", id));
             output = true;
         } catch (Exception e) {
             output = false;
@@ -110,27 +120,28 @@ public class UserService {
     }
 
     // Fetching a particular record from the mongo database.
-    private DBObject getDBObject(String id) {
-        DBCollection coll = MongoFactory.getCollection(db_name, db_collection);
+    private Document getDocument(String id) {
+        MongoCollection coll = MongoFactory.getCollection(db_collection);
 
         // Fetching the record object from the mongo database.
-        DBObject where_query = new BasicDBObject();
+        Document where_query = new Document();
 
         // Put the selected user_id to search.
-        where_query.put("id", id);
-        return coll.findOne(where_query);
+//        where_query.put("id", id);
+        return (Document) coll.find(eq("id", id)).first();
     }
 
     // Fetching a single user details from the mongo database.
     public User findUserId(String id) {
         User u = new User();
-        DBCollection coll = MongoFactory.getCollection(db_name, db_collection);
+        MongoCollection coll = MongoFactory.getCollection(db_collection);
 
         // Fetching the record object from the mongo database.
-        DBObject where_query = new BasicDBObject();
-        where_query.put("id", id);
+        Document where_query = new Document();
+//        where_query.put("id", id);
 
-        DBObject dbo = coll.findOne(where_query);
+        Document dbo = (Document) coll.find(eq("id", id)).first();
+        System.out.println(dbo.toString());
         u.setId(dbo.get("id").toString());
         u.setName(dbo.get("name").toString());
 
